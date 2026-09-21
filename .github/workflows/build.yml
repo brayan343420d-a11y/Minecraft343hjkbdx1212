@@ -24,11 +24,25 @@ jobs:
         with:
           gradle-version: "8.4"
 
-      - name: Compilar el mod
-        run: gradle build --no-build-cache --rerun-tasks
+      - name: Encontrar proyecto Gradle
+        run: |
+          PROJECT_DIR=$(dirname "$(find . -name settings.gradle -print -quit)")
 
-      - name: Subir el .jar como resultado descargable
+          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
+            echo "Proyecto encontrado en la raíz."
+            PROJECT_DIR="."
+          fi
+
+          echo "Proyecto Gradle: $PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Compilar el mod
+        run: |
+          cd "$PROJECT_DIR"
+          gradle build --no-build-cache --rerun-tasks
+
+      - name: Subir el .jar
         uses: actions/upload-artifact@v4
         with:
           name: spawnintro-jar
-          path: build/libs/*.jar
+          path: "**/build/libs/*.jar"
