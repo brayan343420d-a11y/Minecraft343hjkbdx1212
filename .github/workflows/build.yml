@@ -34,7 +34,7 @@ jobs:
           mkdir project
           unzip -q "$ZIP" -d project
 
-          echo "Contenido:"
+          echo "Contenido del proyecto:"
           find project -maxdepth 3 -type f
 
       - name: Compilar
@@ -46,24 +46,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ena-curtain
-          path: project/build/libs/*.jar          cd "$PROJECT_DIR"
-
-          echo "Compilando desde:"
-          pwd
-
-          ls -la
-
-          gradle build --no-build-cache --rerun-tasks
-
-      - name: Subir el JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: spawnintro-jar
-          path: "project/**/build/libs/*.jar"          cd "$PROJECT_DIR"
-          gradle build --no-build-cache --rerun-tasks
-
-      - name: Subir el JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: spawnintro-jar
-          path: "**/build/libs/*.jar"
+          path: project/build/libs/*.jar
