@@ -1,0 +1,37 @@
+name: Build mod
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Descomprimir el código fuente
+        run: |
+          if [ -f project-source.zip ]; then
+            unzip -o project-source.zip -d .
+          fi
+
+      - name: Instalar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Compilar el mod
+        run: gradle build
+
+      - name: Subir el .jar como resultado descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: spawnintro-jar
+          path: build/libs/*.jar
