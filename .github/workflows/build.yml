@@ -21,29 +21,118 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Encontrar y extraer proyecto
-        run: |
-          ZIP=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
+      - name: Configurar Gradle 8.10.2
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
 
-          if [ -z "$ZIP" ]; then
-            echo "ERROR: No se encontró ningún ZIP"
+      - name: Encontrar ZIP del proyecto
+        id: findzip
+        shell: bash
+        run: |
+          set -e
+
+          ZIP="./ena-curtain-fabric-1.20.1-FINAL2.zip"
+
+          if [ ! -f "$ZIP" ]; then
+            echo "ERROR: No se encontró:"
+            echo "$ZIP"
+            echo ""
+            echo "Archivos disponibles:"
+            ls -la
             exit 1
           fi
 
-          echo "Usando: $ZIP"
-          mkdir project
-          unzip -q "$ZIP" -d project
+          echo "ZIP encontrado: $ZIP"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
 
-          echo "Contenido del proyecto:"
-          find project -maxdepth 3 -type f
-
-      - name: Compilar
-        working-directory: project
+      - name: Extraer proyecto
+        shell: bash
         run: |
-          gradle build --no-daemon --no-build-cache
+          set -e
 
-      - name: Subir JAR
+          rm -rf project
+          mkdir -p project
+
+          unzip -q "${{ steps.findzip.outputs.zip }}" -d project
+
+          echo "Comprobando estructura..."
+
+          test -f project/build.gradle
+          test -f project/settings.gradle
+          test -f project/gradle.properties
+          test -f project/src/main/java/com/nubi/enacurtain/EnaCurtainMod.java
+          test -f project/src/main/java/com/nubi/enacurtain/EnaCurtainClient.java
+          test -f project/src/main/java/com/nubi/enacurtain/mixin/HeldItemRendererMixin.java
+          test -f project/src/main/resources/fabric.mod.json
+          test -f project/src/main/resources/ena_curtain.mixins.json
+
+          echo "ESTRUCTURA CORRECTA"
+
+      - name: Compilar mod
+        working-directory: project
+        shell: bash
+        run: |
+          set -e
+
+          gradle clean build \
+            --no-daemon \
+            --no-build-cache \
+            --stacktrace
+
+      - name: Verificar JAR
+        working-directory: project
+        shell: bash
+        run: |
+          set -e
+
+          JAR="build/libs/ena-curtain-1.0.0.jar"
+
+          if [ ! -f "$JAR" ]; then
+            echo "ERROR: No se generó el JAR esperado."
+            echo "Contenido de build/libs:"
+            ls -lah build/libs || true
+            exit 1
+          fi
+
+          SIZE=$(stat -c%s "$JAR")
+
+          echo "JAR generado:"
+          ls -lh "$JAR"
+          echo "Tamaño: $SIZE bytes"
+
+          if [ "$SIZE" -lt 1024 ]; then
+            echo "ERROR: El JAR pesa menos de 1 KB."
+            exit 1
+          fi
+
+          echo "Comprobando clases..."
+
+          unzip -l "$JAR" | grep -q \
+            "com/nubi/enacurtain/EnaCurtainMod.class"
+
+          unzip -l "$JAR" | grep -q \
+            "com/nubi/enacurtain/EnaCurtainClient.class"
+
+          unzip -l "$JAR" | grep -q \
+            "com/nubi/enacurtain/mixin/HeldItemRendererMixin.class"
+
+          unzip -l "$JAR" | grep -q \
+            "fabric.mod.json"
+
+          echo "================================"
+          echo "JAR VERIFICADO CORRECTAMENTE"
+          echo "================================"
+
+      - name: Mostrar contenido del JAR
+        working-directory: project
+        shell: bash
+        run: |
+          unzip -l build/libs/ena-curtain-1.0.0.jar
+
+      - name: Subir JAR final
         uses: actions/upload-artifact@v4
         with:
-          name: ena-curtain
-          path: project/build/libs/*.jar
+          name: ena-curtain-mod
+          path: project/build/libs/ena-curtain-1.0.0.jar
+          if-no-files-found: error
