@@ -33,7 +33,7 @@ jobs:
           find . -maxdepth 3 -type f | sort
 
           # Si el proyecto fue subido como ZIP, lo extraemos.
-          if [ -f "project-source.zip" ]; then
+          if [ -f "ena-curtain-fabric-1.20.1-GITHUB.zip" ]; then
             echo "Encontrado project-source.zip"
             mkdir -p project
             unzip -o "project-source.zip" -d project
