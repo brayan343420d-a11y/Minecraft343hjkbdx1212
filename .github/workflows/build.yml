@@ -32,7 +32,7 @@ jobs:
         run: |
           set -e
 
-          ZIP="./ena-curtain-fabric-1.20.1-FINAL2.zip"
+          ZIP="./ena-curtain-fabric-1.20.1-CINEMATIC.zip""
 
           if [ ! -f "$ZIP" ]; then
             echo "ERROR: No se encontró:"
