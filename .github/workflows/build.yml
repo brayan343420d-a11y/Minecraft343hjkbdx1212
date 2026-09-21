@@ -24,24 +24,49 @@ jobs:
         with:
           gradle-version: "8.4"
 
-      - name: Encontrar proyecto Gradle
+      - name: Preparar proyecto
+        shell: bash
         run: |
-          PROJECT_DIR=$(dirname "$(find . -name settings.gradle -print -quit)")
+          set -e
 
-          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
-            echo "Proyecto encontrado en la raíz."
-            PROJECT_DIR="."
+          echo "Contenido del repositorio:"
+          find . -maxdepth 3 -type f | sort
+
+          # Si el proyecto fue subido como ZIP, lo extraemos.
+          if [ -f "project-source.zip" ]; then
+            echo "Encontrado project-source.zip"
+            mkdir -p project
+            unzip -o "project-source.zip" -d project
           fi
 
-          echo "Proyecto Gradle: $PROJECT_DIR"
+          # Buscar settings.gradle
+          SETTINGS=$(find . -type f -name "settings.gradle" \
+            -not -path "./.gradle/*" \
+            -print -quit)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: No se encontró settings.gradle"
+            echo "Archivos encontrados:"
+            find . -type f | sort
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS")
+
+          echo "Proyecto encontrado en: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
+          echo "Contenido del proyecto:"
+          ls -la "$PROJECT_DIR"
+
       - name: Compilar el mod
+        shell: bash
         run: |
+          set -e
           cd "$PROJECT_DIR"
           gradle build --no-build-cache --rerun-tasks
 
-      - name: Subir el .jar
+      - name: Subir el JAR
         uses: actions/upload-artifact@v4
         with:
           name: spawnintro-jar
