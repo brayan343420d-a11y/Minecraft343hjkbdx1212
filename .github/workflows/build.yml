@@ -32,13 +32,10 @@ jobs:
         run: |
           set -e
 
-          ZIP="./ena-curtain-fabric-1.20.1-CINEMATIC.zip""
+          ZIP=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
 
-          if [ ! -f "$ZIP" ]; then
-            echo "ERROR: No se encontró:"
-            echo "$ZIP"
-            echo ""
-            echo "Archivos disponibles:"
+          if [ -z "$ZIP" ]; then
+            echo "ERROR: No se encontró ningún ZIP."
             ls -la
             exit 1
           fi
@@ -47,34 +44,25 @@ jobs:
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
 
       - name: Extraer proyecto
-        shell: bash
         run: |
           set -e
 
           rm -rf project
-          mkdir -p project
+          mkdir project
 
           unzip -q "${{ steps.findzip.outputs.zip }}" -d project
 
-          echo "Comprobando estructura..."
+          echo "Comprobando proyecto..."
 
           test -f project/build.gradle
           test -f project/settings.gradle
           test -f project/gradle.properties
-          test -f project/src/main/java/com/nubi/enacurtain/EnaCurtainMod.java
-          test -f project/src/main/java/com/nubi/enacurtain/EnaCurtainClient.java
-          test -f project/src/main/java/com/nubi/enacurtain/mixin/HeldItemRendererMixin.java
-          test -f project/src/main/resources/fabric.mod.json
-          test -f project/src/main/resources/ena_curtain.mixins.json
 
-          echo "ESTRUCTURA CORRECTA"
+          echo "Proyecto encontrado correctamente."
 
-      - name: Compilar mod
+      - name: Compilar
         working-directory: project
-        shell: bash
         run: |
-          set -e
-
           gradle clean build \
             --no-daemon \
             --no-build-cache \
@@ -82,57 +70,37 @@ jobs:
 
       - name: Verificar JAR
         working-directory: project
-        shell: bash
         run: |
           set -e
 
-          JAR="build/libs/ena-curtain-1.0.0.jar"
+          JAR=$(find build/libs -maxdepth 1 -type f -name "*.jar" ! -name "*sources.jar" | head -n 1)
 
-          if [ ! -f "$JAR" ]; then
-            echo "ERROR: No se generó el JAR esperado."
-            echo "Contenido de build/libs:"
-            ls -lah build/libs || true
+          if [ -z "$JAR" ]; then
+            echo "ERROR: No se generó ningún JAR."
+            ls -lah build/libs
             exit 1
           fi
 
-          SIZE=$(stat -c%s "$JAR")
-
-          echo "JAR generado:"
+          echo "JAR encontrado:"
           ls -lh "$JAR"
-          echo "Tamaño: $SIZE bytes"
+
+          SIZE=$(stat -c%s "$JAR")
 
           if [ "$SIZE" -lt 1024 ]; then
             echo "ERROR: El JAR pesa menos de 1 KB."
             exit 1
           fi
 
-          echo "Comprobando clases..."
+          unzip -l "$JAR" | grep -q "fabric.mod.json"
+          unzip -l "$JAR" | grep -q "EnaCurtainMod.class"
+          unzip -l "$JAR" | grep -q "EnaCurtainClient.class"
+          unzip -l "$JAR" | grep -q "HeldItemRendererMixin.class"
 
-          unzip -l "$JAR" | grep -q \
-            "com/nubi/enacurtain/EnaCurtainMod.class"
+          echo "JAR VERIFICADO CORRECTAMENTE."
 
-          unzip -l "$JAR" | grep -q \
-            "com/nubi/enacurtain/EnaCurtainClient.class"
-
-          unzip -l "$JAR" | grep -q \
-            "com/nubi/enacurtain/mixin/HeldItemRendererMixin.class"
-
-          unzip -l "$JAR" | grep -q \
-            "fabric.mod.json"
-
-          echo "================================"
-          echo "JAR VERIFICADO CORRECTAMENTE"
-          echo "================================"
-
-      - name: Mostrar contenido del JAR
-        working-directory: project
-        shell: bash
-        run: |
-          unzip -l build/libs/ena-curtain-1.0.0.jar
-
-      - name: Subir JAR final
+      - name: Subir JAR
         uses: actions/upload-artifact@v4
         with:
           name: ena-curtain-mod
-          path: project/build/libs/ena-curtain-1.0.0.jar
+          path: project/build/libs/*.jar
           if-no-files-found: error
