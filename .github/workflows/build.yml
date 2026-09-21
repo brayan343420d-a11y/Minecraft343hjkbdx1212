@@ -21,12 +21,11 @@ jobs:
 
       - name: Preparar Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Dar permisos a Gradle
-        run: chmod +x gradlew
+        with:
+          gradle-version: "8.4"
 
       - name: Compilar el mod
-        run: ./gradlew build --no-build-cache --rerun-tasks
+        run: gradle build --no-build-cache --rerun-tasks
 
       - name: Subir el .jar como resultado descargable
         uses: actions/upload-artifact@v4
